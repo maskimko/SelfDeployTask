@@ -1,0 +1,9 @@
+Write a daemon in any language (Python or Go preferably) which will:
+
+    Be able to create VPC, ELB and 2 EC2 instances.
+    Be able to deploy itself to AWS or GCE.
+    Limit access to itself to only the IP address from which it was started.
+    Will listen on socket (not http) and react on 2 commands:
+        "stop" - will remove the deployment completely.
+        "moveto '%region%'” - will create another deployment in the specified region and destroy itself completely in the current location (except initial run from the local computer). 
+
