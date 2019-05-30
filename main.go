@@ -1,66 +1,32 @@
 package main
+
 import (
-	"log"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/defaults"
-    "github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/aws/arn"
+	"log"
+	"wix/ssh"
+	"wix/utils"
 )
+
 const VpcName string = "Go4learn"
 
-func main(){
-    sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	conf := defaults.Config()
-	region := *(conf.Region)
-	fmt.Println(region)
-	iamService := iam.New(sess)
-	userOut, err := iamService.GetUser(&iam.GetUserInput{})
+func main() {
+	me, err := utils.GetPath2Itself()
 	if err != nil {
-		log.Fatal("Cannot create VPC: %s", err)
+		log.Fatalf("Cannot get path to itself: %s", err)
 	}
-	userArn, err := arn.Parse(*(userOut.User.Arn))
+	fmt.Printf("This executable is located at: %s\n", me)
+	myIp, err := utils.GetMyIp()
 	if err != nil {
-		log.Fatal("Cannot create VPC: %s", err)
+		log.Fatalf("Cannot get my IP address: %s", err)
 	}
-	accountId := userArn.AccountID
-	fmt.Println(accountId)
-	ec2Service := ec2.New(sess)
-	vpcOut, err := ec2Service.CreateVpc(&ec2.CreateVpcInput{CidrBlock : aws.String("172.23.2.0/26")})
-	if err != nil {
-		log.Fatal("Cannot create VPC: %s", err)
-	}
-	vpcId := vpcOut.Vpc.VpcId
-	fmt.Printf("Creating VPC: id %s\n", *vpcId)
-	descVpcIn := &ec2.DescribeVpcsInput{VpcIds: []*string{vpcId}}
-	
-	err = ec2Service.WaitUntilVpcExists(descVpcIn)
-	if err != nil {
-		log.Fatal("Cannot describe VPC: %s", err)
-	}
-	fmt.Printf("VPC id: %s has been created successfully!\n", *vpcId)
-	descVpcOut, err := ec2Service.DescribeVpcs(&ec2.DescribeVpcsInput{VpcIds: []*string{vpcId}})
-	if err != nil {
-		log.Fatal("Cannot describe VPC: %s", err)
-	}
-	fmt.Print(descVpcOut.String())
-	
-	vpcArnStr := fmt.Sprintf("arn:aws:ec2:%s:%s:vpc/%s",region,accountId,*vpcId)
-	fmt.Printf("VPC ARN: %s", vpcArnStr)
-	vpcTagIn  := ec2.CreateTagsInput{Resources: []*string{vpcId}, 
-	Tags: []*ec2.Tag{&ec2.Tag{Key: aws.String("Name"), Value: aws.String(VpcName)}}}
-	vpcTagOut, err := ec2Service.CreateTags(&vpcTagIn)
-	if err != nil {
-		log.Fatal("Cannot describe VPC: %s", err)
-	}
-	fmt.Print(vpcTagOut.String())
-	descVpcOut, err = ec2Service.DescribeVpcs(&ec2.DescribeVpcsInput{VpcIds: []*string{vpcId}})
-	if err != nil {
-		log.Fatal("Cannot describe VPC: %s", err)
-	}
-	fmt.Print(descVpcOut.String())
+	sshConfig := &ssh.SshConfig{Host: "ansible.tonicfordev.com",
+		Port:    22,
+		KeyPath: "/Users/maksym.shkolnyi/.ssh/tonic",
+		User:    "maksym.shkolnyi"}
+
+	fmt.Printf("My external IP address is: %s\n", *myIp)
+	ssh.CopyItself(sshConfig)
+	fmt.Println("I moved myself to the remote machine")
+	ssh.RunCommand("uptime", sshConfig)
+	fmt.Println("I launched myself to the remote machine")
 }
