@@ -12,10 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam"
 )
 
-func awsCreateVpc(vpcName string) {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
+func awsCreateVpc(vpcName string, sess *session.Session) {
+
 	conf := defaults.Config()
 	region := *(conf.Region)
 	fmt.Println(region)

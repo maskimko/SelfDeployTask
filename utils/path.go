@@ -11,7 +11,6 @@ func GetPath2Itself() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(dir)
 	return dir, nil
 }
 

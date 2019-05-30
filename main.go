@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"wix/ssh"
+	"wix/server"
 	"wix/utils"
 )
 
@@ -19,14 +19,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("Cannot get my IP address: %s", err)
 	}
-	sshConfig := &ssh.SshConfig{Host: "ansible.tonicfordev.com",
-		Port:    22,
-		KeyPath: "/Users/maksym.shkolnyi/.ssh/tonic",
-		User:    "maksym.shkolnyi"}
 
+	// sshConfig := &ssh.SshConfig{Host: "ansible.tonicfordev.com",
+	// 	Port:    22,
+	// 	KeyPath: "/Users/maksym.shkolnyi/.ssh/tonic",
+	// 	User:    "maksym.shkolnyi"}
+	//
 	fmt.Printf("My external IP address is: %s\n", *myIp)
-	ssh.CopyItself(sshConfig)
-	fmt.Println("I moved myself to the remote machine")
-	ssh.RunCommand("uptime", sshConfig)
-	fmt.Println("I launched myself to the remote machine")
+	// ssh.CopyItself(sshConfig)
+	// fmt.Println("I moved myself to the remote machine")
+	// ssh.RunCommand("uptime", sshConfig)
+	// fmt.Println("I launched myself to the remote machine")
+	err = server.Start(1989)
+	if err != nil {
+		log.Fatalf("Cannot start server: %s", err)
+	}
 }
