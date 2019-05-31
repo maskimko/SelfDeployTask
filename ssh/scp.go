@@ -6,19 +6,21 @@ import (
 	"wix/utils"
 
 	scp "github.com/bramvdbogaerde/go-scp"
-	"github.com/bramvdbogaerde/go-scp/auth"
 	"golang.org/x/crypto/ssh"
 )
 
 func CopyItself(configuration *SshConfig) error {
-	// Use SSH key authentication from the auth package
-	// we ignore the host key in this example, please change this if you use this library
-	clientConfig, _ := auth.PrivateKey(configuration.User, configuration.KeyPath, ssh.InsecureIgnoreHostKey())
 
+	config := &ssh.ClientConfig{
+		User: configuration.User,
+		Auth: []ssh.AuthMethod{
+			publicKey(&configuration.PrivateKey)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
 	// For other authentication methods see ssh.ClientConfig and ssh.AuthMethod
 
 	// Create a new SCP client
-	client := scp.NewClient(configuration.GetHostPort(), &clientConfig)
+	client := scp.NewClient(configuration.GetHostPort(), config)
 
 	// Connect to the remote server
 	err := client.Connect()

@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func publicKey(path string) ssh.AuthMethod {
+func PublicKeyFromFile(path string) ssh.AuthMethod {
 	key, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.Fatalf("Cannot read private ssh key: %s", err)
@@ -21,12 +21,22 @@ func publicKey(path string) ssh.AuthMethod {
 	return ssh.PublicKeys(signer)
 }
 
+//An unencrypted PEM encoded RSA private key.
+func publicKey(privateKey *[]byte) ssh.AuthMethod {
+
+	signer, err := ssh.ParsePrivateKey(*privateKey)
+	if err != nil {
+		log.Fatalf("Cannot parse private ssh key: %s", err)
+	}
+	return ssh.PublicKeys(signer)
+}
+
 func RunCommand(cmd string, configuration *SshConfig) {
 
 	config := &ssh.ClientConfig{
 		User: configuration.User,
 		Auth: []ssh.AuthMethod{
-			publicKey(configuration.KeyPath)},
+			publicKey(&configuration.PrivateKey)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	conn, err := ssh.Dial("tcp", configuration.GetHostPort(), config)

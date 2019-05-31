@@ -1,5 +1,6 @@
 github.com/aws/aws-sdk-go v1.19.39 h1:pIez14zQWSd/TER2Scohm7aCEG2TgoyXSOX6srOKt6o=
 github.com/aws/aws-sdk-go v1.19.39/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
+github.com/aws/aws-sdk-go v1.19.41 h1:veutzvQP/lOmYmtX26S9mTFJLO6sp7/UsxFcCjglu4A=
 github.com/bramvdbogaerde/go-scp v0.0.0-20190525113804-cdc2235e3261 h1:p5xD2HpqqlVv46DR2R+3ZsGd0G1tq3rvqpmCv4D4Fvc=
 github.com/bramvdbogaerde/go-scp v0.0.0-20190525113804-cdc2235e3261/go.mod h1:aiQFnN5G0MivefWD+J4Em1a+CDyu/UBEmbNP5+8Gtd4=
 github.com/frairon/go-outline-parser v0.0.0-20190121070907-667a12a58dc7 h1:e51TJxKNXMK4fMoWgE66qTxxAd61n/96crp9kLxtMSU=
