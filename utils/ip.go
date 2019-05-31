@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 const AwsIpCheckerUrl string = "https://checkip.amazonaws.com/"
@@ -20,6 +21,6 @@ func GetMyIp() (*string, error) {
 		log.Printf("Cannot read response from %s\n", AwsIpCheckerUrl)
 		return nil, err
 	}
-	ip := string(body)
+	ip := strings.Trim(string(body), " \n")
 	return &ip, nil
 }

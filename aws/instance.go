@@ -8,26 +8,38 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
-func RunInstances(svc *ec2.EC2) {
+func RunInstances(keyName *string, subnets []*string, sg *string, svc *ec2.EC2) error {
+	err := RunInstance(subnets[0], sg, keyName, svc)
+	if err != nil {
+		return err
+	}
+	err = RunInstance(subnets[1], sg, keyName, svc)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RunInstance(subnet, sg, keyName *string, svc *ec2.EC2) error {
 
 	input := &ec2.RunInstancesInput{
 		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
 			{
-				DeviceName: aws.String("/dev/sdh"),
+				DeviceName: aws.String("xvdm"),
 				Ebs: &ec2.EbsBlockDevice{
-					VolumeSize: aws.Int64(100),
+					VolumeSize: aws.Int64(5),
 				},
 			},
 		},
 		ImageId:      aws.String(DefaultAMI),
 		InstanceType: aws.String(DefaultInstanceType),
-		KeyName:      aws.String("my-key-pair"),
+		KeyName:      keyName,
 		MaxCount:     aws.Int64(1),
 		MinCount:     aws.Int64(1),
 		SecurityGroupIds: []*string{
-			aws.String("sg-1a2b3c4d"),
+			sg,
 		},
-		SubnetId: aws.String("subnet-6e7f829e"),
+		SubnetId: subnet,
 		TagSpecifications: []*ec2.TagSpecification{
 			{
 				ResourceType: aws.String("instance"),
@@ -53,8 +65,9 @@ func RunInstances(svc *ec2.EC2) {
 			// Message from an error.
 			fmt.Println(err.Error())
 		}
-		return
+		return err
 	}
 
 	fmt.Println(result)
+	return nil
 }

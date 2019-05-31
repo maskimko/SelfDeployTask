@@ -2,6 +2,7 @@ package aws
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -20,6 +21,9 @@ func CreateKeyPair(svc *ec2.EC2) (*string, error) {
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
+			case "InvalidKeyPair.Duplicate":
+				log.Printf("Key Pair %q already exists\nI cannot show you the private key. Please delete the key pair.", KeyPairName)
+
 			default:
 				fmt.Println(aerr.Error())
 			}

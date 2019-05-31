@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"wix/ssh"
+	"wix/utils"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -41,7 +42,7 @@ func Init(sshConf *ssh.SshConfig) error {
 	sess := GetDefaultSession()
 	conf := defaults.Config()
 	region := *(conf.Region)
-	fmt.Println(region)
+
 	iamService := iam.New(sess)
 	userOut, err := iamService.GetUser(&iam.GetUserInput{})
 	if err != nil {
@@ -54,15 +55,37 @@ func Init(sshConf *ssh.SshConfig) error {
 		return err
 	}
 	accountId := userArn.AccountID
-	fmt.Printf("Using AWS account id: %s\n",accountId)
+	fmt.Printf("Using AWS account id: %s\n", accountId)
 	ec2Service := ec2.New(sess)
-
-	err = CreateVpc("Test-Vpc", ec2Service)
+	azs, err := GetAzIds(ec2Service)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Using region %s. This region has these availability zones: %v\n", region, azs)
+	vpcId, err := CreateVpc("Test-Vpc", ec2Service)
 	if err != nil {
 		return err
 	}
 	privKey, err := CreateKeyPair(ec2Service)
 	sshConf.PrivateKey = []byte(*privKey)
+	if err != nil {
+		return err
+	}
+	subnets, err := CreateSubnets(vpcId, ec2Service)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Created subnets %v", subnets)
+	ipAddr, err := utils.GetMyIp()
+	if err != nil {
+		return err
+	}
+	securityGroupIds, err := CreateSecurityGroups(ipAddr, vpcId, ec2Service)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Created security groups %v", securityGroupIds)
+	err = RunInstances(aws.String(KeyPairName), subnets, securityGroupIds[0], ec2Service)
 	if err != nil {
 		return err
 	}
