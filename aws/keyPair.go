@@ -22,8 +22,8 @@ func CreateKeyPair(svc *ec2.EC2) (*string, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case "InvalidKeyPair.Duplicate":
-				log.Printf("Key Pair %q already exists\nI cannot show you the private key. Please delete the key pair.", KeyPairName)
-
+				log.Printf("Key Pair %q already exists\nI cannot show you the private key. Please, delete existing key pair", KeyPairName)
+				err = nil
 			default:
 				fmt.Println(aerr.Error())
 			}

@@ -126,40 +126,20 @@ func AttachIgw(igwId, vpcId *string, svc *ec2.EC2) error {
 	return nil
 }
 
-func DetachInternetGateway(igwId, vpcId *string, svc *ec2.EC2) error {
+func DetachInternetGateway(igwId, vpcId *string, timeoutSeconds int16, svc *ec2.EC2) error {
 
-	input := &ec2.DetachInternetGatewayInput{
+	describeInput := &ec2.DescribeInternetGatewaysInput{
+		InternetGatewayIds: []*string{igwId},
+	}
+
+	detachInput := &ec2.DetachInternetGatewayInput{
 		InternetGatewayId: igwId,
 		VpcId:             vpcId,
 	}
-
-	result, err := svc.DetachInternetGateway(input)
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				log.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			log.Println(err.Error())
-		}
-		return err
-	}
-
-	fmt.Println(result)
-	return nil
-}
-
-func WaitUntilIgwDetached(igwId *string, timeoutSeconds int16, svc *ec2.EC2) error {
-
-	input := &ec2.DescribeInternetGatewaysInput{
-		InternetGatewayIds: []*string{igwId},
-	}
 	var sleep int16 = 5
+
 	for {
-		result, err := svc.DescribeInternetGateways(input)
+		detachResult, err := svc.DetachInternetGateway(detachInput)
 		if err != nil {
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
@@ -174,12 +154,28 @@ func WaitUntilIgwDetached(igwId *string, timeoutSeconds int16, svc *ec2.EC2) err
 			return err
 		}
 
-		fmt.Println(result)
-		if len(result.InternetGateways) == 0 {
+		fmt.Println(detachResult)
+		describeResult, err := svc.DescribeInternetGateways(describeInput)
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				default:
+					log.Println(aerr.Error())
+				}
+			} else {
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				log.Println(err.Error())
+			}
+			return err
+		}
+
+		fmt.Println(describeResult)
+		if len(describeResult.InternetGateways) == 0 {
 			log.Println("It looks there are no IGWs. It is weird but OK. Returning")
 			break
 		} else {
-			igw := result.InternetGateways[0]
+			igw := describeResult.InternetGateways[0]
 			if len(igw.Attachments) == 0 {
 				log.Println("Internet gateway is detached")
 				break

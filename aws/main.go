@@ -53,7 +53,6 @@ func Init(inventory *Inventory) error {
 	conf := sess.Config
 	region := conf.Region
 	inventory.Region = region
-	color.Blue("Using region '%s'", *region)
 	iamService := iam.New(sess)
 	ec2Service := ec2.New(sess)
 	elbService := elb.New(sess)
@@ -157,14 +156,11 @@ func Destroy(inventory *Inventory) error {
 	}
 	color.Red("Subnets %s have been successfully removed", utils.Slice2String(inventory.Subnets))
 
-	err = DetachInternetGateway(inventory.IgwId, inventory.VpcId, ec2Service)
+	err = DetachInternetGateway(inventory.IgwId, inventory.VpcId, 120, ec2Service)
 	if err != nil {
 		return err
 	}
-	err = WaitUntilIgwDetached(inventory.IgwId, 120, ec2Service)
-	if err != nil {
-		return err
-	}
+
 	color.Red("Internet gateway %s have been successfully detached from VPC %s", *(inventory.IgwId), *(inventory.VpcId))
 	DeleteInternetGateway(inventory.IgwId, ec2Service)
 	if err != nil {
@@ -176,6 +172,11 @@ func Destroy(inventory *Inventory) error {
 		return err
 	}
 	color.Red("VPC %s have been successfully removed", inventory.VpcId)
+	err = DeleteKeyPair(ec2Service)
+	if err != nil {
+		return err
+	}
+	color.Red("Key pair %s have been successfully removed", KeyPairName)
 	color.Magenta("Region %s is clean", *(inventory.Region))
 	return nil
 }

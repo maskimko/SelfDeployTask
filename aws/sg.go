@@ -1,8 +1,10 @@
 package aws
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -179,7 +181,7 @@ func AuthorizeElbAccess(sgId, ipAddress *string, svc *ec2.EC2) error {
 
 func DeleteSecurityGroups(securityGroups []*string, svc *ec2.EC2) error {
 	for _, sg := range securityGroups {
-		err := DeleteSecurityGroup(sg, svc)
+		err := deleteSecurityGroup(sg, 120, svc)
 		if err != nil {
 			return err
 		}
@@ -187,7 +189,7 @@ func DeleteSecurityGroups(securityGroups []*string, svc *ec2.EC2) error {
 	return nil
 }
 
-func DeleteSecurityGroup(sgId *string, svc *ec2.EC2) error {
+func deleteSecurityGroup(sgId *string, timeoutSeconds int16, svc *ec2.EC2) error {
 
 	input := &ec2.DeleteSecurityGroupInput{
 		GroupId: sgId,
@@ -197,6 +199,18 @@ func DeleteSecurityGroup(sgId *string, svc *ec2.EC2) error {
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
+			case "DependencyViolation":
+				if timeoutSeconds > 0 {
+					log.Println("Dependency violation. Retrying")
+					time.Sleep(30 * time.Second)
+					deleteSecurityGroup(sgId, timeoutSeconds-30, svc)
+					err = nil
+				} else {
+					return errors.New(fmt.Sprintf("Cannot remove security group %s. Timeout reached.", *sgId))
+				}
+			case "InvalidGroup.NotFound":
+				log.Println("It looks like security group has been already removed. Weird, but OK. Continuing...")
+				return nil
 			default:
 				log.Println(aerr.Error())
 			}
