@@ -28,6 +28,7 @@ func RunInstances(keyName *string, subnets []*string, sg *string, svc *ec2.EC2) 
 
 func RunInstance(subnet, sg, keyName *string, svc *ec2.EC2) (*string, error) {
 	var instanceId *string
+	region := svc.Config.Region
 	input := &ec2.RunInstancesInput{
 		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
 			{
@@ -37,7 +38,7 @@ func RunInstance(subnet, sg, keyName *string, svc *ec2.EC2) (*string, error) {
 				},
 			},
 		},
-		ImageId:      aws.String(DefaultAMI),
+		ImageId:      aws.String(AMIMap[*region]),
 		InstanceType: aws.String(DefaultInstanceType),
 		KeyName:      keyName,
 		MaxCount:     aws.Int64(1),

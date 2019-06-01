@@ -92,5 +92,15 @@ func handleStop(inventory *aws.Inventory) error {
 
 func handleMove(region string, inventory *aws.Inventory) error {
 	fmt.Printf("Received move to region %s signal (NOT implemented)\n", region)
+	err := handleStop(inventory)
+	if err != nil {
+		return err
+	}
+	awsSession := aws.GetSession(&region)
+	inventory.Session = awsSession
+	err = aws.Init(inventory)
+	if err != nil {
+		return err
+	}
 	return nil
 }
