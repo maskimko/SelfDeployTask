@@ -8,9 +8,10 @@ import (
 	"net"
 	"regexp"
 	"strings"
+	"wix/aws"
 )
 
-func Start(port int16) error {
+func Start(port int16, inventory *aws.Inventory) error {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Printf("Cannot bind port %d: %s\n", port, err)
@@ -21,11 +22,11 @@ func Start(port int16) error {
 		if err != nil {
 			log.Printf("Connection error: %s\n", err)
 		}
-		go handleConnection(conn)
+		go handleConnection(conn, inventory)
 	}
 }
 
-func handleConnection(conn net.Conn) error {
+func handleConnection(conn net.Conn, inventory *aws.Inventory) error {
 	defer conn.Close()
 	rAddr := conn.RemoteAddr()
 	fmt.Printf("get Connection from %s\n", rAddr)
@@ -44,21 +45,21 @@ func handleConnection(conn net.Conn) error {
 	}
 	message := string(messageBuf[:len(messageBuf)])
 	log.Printf("Received message %s (length %d)\n", message, len(message))
-	err := dispatch(&message)
+	err := dispatch(&message, inventory)
 	if err != nil {
 		log.Printf("Got error while handling message: %s\n", err)
 	}
 	return err
 }
 
-func dispatch(message *string) error {
+func dispatch(message *string, inventory *aws.Inventory) error {
 	stopRegex, _ := regexp.Compile("^stop$")
 	moveRegex, _ := regexp.Compile("^moveto '([a-z0-9-]+)'$")
 	rows := strings.Split(*message, "\n")
 	for rn, row := range rows {
 		if len(row) > 0 {
 			if stopRegex.MatchString(row) {
-				err := handleStop()
+				err := handleStop(inventory)
 				if err != nil {
 					return err
 				}
@@ -67,7 +68,7 @@ func dispatch(message *string) error {
 			if moveRegex.MatchString(row) {
 				matches := moveRegex.FindStringSubmatch(row)
 				if len(matches) > 1 {
-					err := handleMove(matches[1])
+					err := handleMove(matches[1], inventory)
 					if err != nil {
 						return err
 					}
@@ -84,12 +85,12 @@ func dispatch(message *string) error {
 	return nil
 }
 
-func handleStop() error {
-	fmt.Println("Received stop signal (NOT implemented)")
-	return nil
+func handleStop(inventory *aws.Inventory) error {
+	err := aws.Destroy(inventory)
+	return err
 }
 
-func handleMove(region string) error {
+func handleMove(region string, inventory *aws.Inventory) error {
 	fmt.Printf("Received move to region %s signal (NOT implemented)\n", region)
 	return nil
 }

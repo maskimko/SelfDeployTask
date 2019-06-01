@@ -5,7 +5,6 @@ import (
 	"log"
 	"wix/aws"
 	"wix/server"
-	"wix/ssh"
 	"wix/utils"
 )
 
@@ -40,13 +39,15 @@ func main() {
 	} else {
 		fmt.Println("I defenitely exist not in AWS. Perhaps on your laptop;)")
 	}
-	sshConfig := &ssh.SshConfig{}
+	//sshConfig := &ssh.SshConfig{}
 
-	err = aws.Init(sshConfig)
+	awsSession := aws.GetDefaultSession()
+	awsInventory := &aws.Inventory{Session: awsSession}
+	err = aws.Init(awsInventory)
 	if err != nil {
 		log.Fatalf("Cannot perform AWS initialization: %s", err)
 	}
-	err = server.Start(1989)
+	err = server.Start(1989, awsInventory)
 	if err != nil {
 		log.Fatalf("Cannot start server: %s", err)
 	}

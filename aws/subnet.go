@@ -61,3 +61,38 @@ func createSubnet(subnet, vpcId, az *string, svc *ec2.EC2) (*string, error) {
 	}
 	return subnetId, nil
 }
+
+func DeleteSubnets(subnetsIds []*string, svc *ec2.EC2) error {
+	for _, net := range subnetsIds {
+		err := DeleteSubnet(net, svc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DeleteSubnet(subnetId *string, svc *ec2.EC2) error {
+
+	input := &ec2.DeleteSubnetInput{
+		SubnetId: subnetId,
+	}
+
+	result, err := svc.DeleteSubnet(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				log.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			log.Println(err.Error())
+		}
+		return err
+	}
+
+	fmt.Println(result)
+	return nil
+}

@@ -176,3 +176,38 @@ func AuthorizeElbAccess(sgId, ipAddress *string, svc *ec2.EC2) error {
 	fmt.Println(result)
 	return nil
 }
+
+func DeleteSecurityGroups(securityGroups []*string, svc *ec2.EC2) error {
+	for _, sg := range securityGroups {
+		err := DeleteSecurityGroup(sg, svc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DeleteSecurityGroup(sgId *string, svc *ec2.EC2) error {
+
+	input := &ec2.DeleteSecurityGroupInput{
+		GroupId: sgId,
+	}
+
+	result, err := svc.DeleteSecurityGroup(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				log.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			log.Println(err.Error())
+		}
+		return err
+	}
+
+	fmt.Println(result)
+	return nil
+}

@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
-const KeyPairName string = "TestTaskKeyPair"
+const KeyPairName string = "TestKeyPair"
 
 func CreateKeyPair(svc *ec2.EC2) (*string, error) {
 
