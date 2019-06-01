@@ -31,7 +31,7 @@ func publicKey(privateKey *[]byte) ssh.AuthMethod {
 	return ssh.PublicKeys(signer)
 }
 
-func RunCommand(cmd string, configuration *SshConfig) {
+func RunCommand(cmd string, configuration *SshConfig) error {
 
 	config := &ssh.ClientConfig{
 		User: configuration.User,
@@ -42,28 +42,30 @@ func RunCommand(cmd string, configuration *SshConfig) {
 	conn, err := ssh.Dial("tcp", configuration.GetHostPort(), config)
 
 	if err != nil {
-		log.Fatalf("Cannot establish ssh connection: %s", err)
+		log.Printf("Cannot establish ssh connection: %s", err)
+		return err
 	}
 	defer conn.Close()
 
 	sess, err := conn.NewSession()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer sess.Close()
 	sessStdOut, err := sess.StdoutPipe()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	go io.Copy(os.Stdout, sessStdOut)
 	sessStderr, err := sess.StderrPipe()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	go io.Copy(os.Stderr, sessStderr)
 
 	err = sess.Run(cmd)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }

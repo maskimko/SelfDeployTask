@@ -17,36 +17,61 @@ import (
 //CentOS 7 (x86_64) - with Updates HVM
 const (
 	// DefaultAMI          string = "ami-02eac2c0129f6376b"
-	DefaultInstanceType string             = "t2.nano"
-
+	DefaultInstanceType string = "t2.nano"
 )
-var AMIMap              map[string]string = map[string]string{
-  "ap-northeast-1": "ami-25bd2743",
-  "ap-northeast-2": "ami-7248e81c",
-  "ap-south-1":     "ami-5d99ce32",
-  "ap-southeast-1": "ami-d2fa88ae",
-  "ap-southeast-2": "ami-b6bb47d4",
-  "ca-central-1":   "ami-dcad28b8",
-  "eu-central-1":   "ami-337be65c",
-  "eu-west-1":      "ami-6e28b517",
-  "eu-west-2":      "ami-ee6a718a",
-  "eu-west-3":      "ami-bfff49c2",
-  "sa-east-1":      "ami-f9adef95",
-  "us-east-1":      "ami-4bf3d731",
-  "us-east-2":      "ami-e1496384",
-  "us-west-1":      "ami-65e0e305",
-  "us-west-2":      "ami-a042f4d8",
+
+var AMIMap map[string]string = map[string]string{
+	"ap-northeast-1": "ami-25bd2743",
+	"ap-northeast-2": "ami-7248e81c",
+	"ap-south-1":     "ami-5d99ce32",
+	"ap-southeast-1": "ami-d2fa88ae",
+	"ap-southeast-2": "ami-b6bb47d4",
+	"ca-central-1":   "ami-dcad28b8",
+	"eu-central-1":   "ami-337be65c",
+	"eu-west-1":      "ami-6e28b517",
+	"eu-west-2":      "ami-ee6a718a",
+	"eu-west-3":      "ami-bfff49c2",
+	"sa-east-1":      "ami-f9adef95",
+	"us-east-1":      "ami-4bf3d731",
+	"us-east-2":      "ami-e1496384",
+	"us-west-1":      "ami-65e0e305",
+	"us-west-2":      "ami-a042f4d8",
 }
 
 type Inventory struct {
 	VpcId          *string
 	Instances      []*string
+	PublicIps      []*string
+	AllocationIds  []*string
+	AssociationIds []*string
 	PrivateKey     *string
 	Session        *session.Session
 	Region         *string
 	IgwId          *string
 	SecurityGroups []*string
 	Subnets        []*string
+}
+
+func (i *Inventory) Clone() *Inventory {
+	inv := Inventory{
+		VpcId:          i.VpcId,
+		Instances:      i.Instances,
+		PublicIps:      i.PublicIps,
+		PrivateKey:     i.PrivateKey,
+		AllocationIds:  i.AllocationIds,
+		AssociationIds: i.AssociationIds,
+		Session:        i.Session,
+		Region:         i.Region,
+		IgwId:          i.IgwId,
+		SecurityGroups: i.SecurityGroups,
+		Subnets:        i.Subnets,
+	}
+	return &inv
+}
+
+func (i *Inventory) GetPrivateKey() *[]byte {
+	pKey := []byte(*i.PrivateKey)
+	return &pKey
 }
 
 func GetDefaultSession() *session.Session {
@@ -114,6 +139,7 @@ func Init(inventory *Inventory) error {
 	if err != nil {
 		return err
 	}
+  color.HiBlue("For debugging purpose you may want to save this private key:\n%s\n", *privKey)
 	color.Green("SSH key pair '%s' has been successfully created", KeyPairName)
 	subnets, err := CreateSubnets(vpcId, ec2Service)
 	if err != nil {
@@ -137,7 +163,20 @@ func Init(inventory *Inventory) error {
 		return err
 	}
 	inventory.Instances = instanceIds
-	color.Green("Created instances '%v'", utils.Slice2String(instanceIds))
+	allocationIds, associationIds, err := BindPublicIps(instanceIds, ec2Service)
+	if err != nil {
+		return err
+	}
+	inventory.AllocationIds = allocationIds
+	inventory.AssociationIds = associationIds
+	publicIps, err := GetPublicIps(instanceIds, ec2Service)
+	if err != nil {
+		return err
+	}
+	inventory.PublicIps = publicIps
+	color.Green("Created instances '%s' with public IP addresses (%s)",
+		utils.Slice2String(instanceIds),
+		utils.Slice2String(publicIps))
 	dns, err := CreateElb(subnets, securityGroupIds[1], elbService)
 	if err != nil {
 		return err
@@ -153,8 +192,18 @@ func Destroy(inventory *Inventory) error {
 	sess := inventory.Session
 	ec2Service := ec2.New(sess)
 	elbService := elb.New(sess)
+
+	err := UnbindPublicIps(inventory.AllocationIds, inventory.AssociationIds, ec2Service)
+	if err != nil {
+		return err
+	}
+	color.Red("Elastic IP addresses %s\n\t(allocation ids %s,\n\tassociation ids %s)\n\thas been successfully released",
+		utils.Slice2String(inventory.PublicIps),
+		utils.Slice2String(inventory.AllocationIds),
+    utils.Slice2String(inventory.AssociationIds))
 	color.Red("Terminating instances %s. Please wait...", utils.Slice2String(inventory.Instances))
-	err := TerminateInstance(inventory.Instances, ec2Service)
+
+	err = TerminateInstances(inventory.Instances, ec2Service)
 	if err != nil {
 		return err
 	}

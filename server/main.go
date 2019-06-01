@@ -91,14 +91,16 @@ func handleStop(inventory *aws.Inventory) error {
 }
 
 func handleMove(region string, inventory *aws.Inventory) error {
-	fmt.Printf("Received move to region %s signal (NOT implemented)\n", region)
-	err := handleStop(inventory)
+	log.Printf("Received move to region %s signal. Start initializing a new region %s\n", region, region)
+	oldInventory := inventory.Clone()
+	awsSession := aws.GetSession(&region)
+	inventory.Session = awsSession
+	err := aws.Init(inventory)
 	if err != nil {
 		return err
 	}
-	awsSession := aws.GetSession(&region)
-	inventory.Session = awsSession
-	err = aws.Init(inventory)
+	log.Printf("Shutting down deployment in initial region %s", *(oldInventory.Region))
+	err = handleStop(oldInventory)
 	if err != nil {
 		return err
 	}

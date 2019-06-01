@@ -31,6 +31,9 @@ func CopyItself(configuration *SshConfig) error {
 
 	// Open a file
 	me, err := utils.GetPath2Itself()
+	if err != nil {
+		return err
+	}
 	f, _ := os.Open(me)
 
 	// Close client connection after the file has been copied

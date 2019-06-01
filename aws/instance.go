@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/fatih/color"
+	"wix/utils"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -76,13 +76,13 @@ func RunInstance(subnet, sg, keyName *string, svc *ec2.EC2) (*string, error) {
 	}
 	instanceId = result.Instances[0].InstanceId
 	fmt.Println(result)
-	color.White("Launched instance %s of type %s from AMI %s", *instanceId,
+	fmt.Printf("Launched instance %s of type %s from AMI %s\n", *instanceId,
 		*(result.Instances[0].InstanceType),
 		*(result.Instances[0].ImageId))
 	return instanceId, nil
 }
 
-func TerminateInstance(instances []*string, svc *ec2.EC2) error {
+func TerminateInstances(instances []*string, svc *ec2.EC2) error {
 
 	terminateInput := &ec2.TerminateInstancesInput{
 		InstanceIds: instances}
@@ -112,4 +112,53 @@ func TerminateInstance(instances []*string, svc *ec2.EC2) error {
 		return err
 	}
 	return nil
+}
+
+func WaitForOkInstances(instanceIds []*string, svc *ec2.EC2) error {
+	log.Printf("Waiting for instances %s to become ready...", utils.Slice2String(instanceIds))
+	input := &ec2.DescribeInstanceStatusInput{
+		InstanceIds: instanceIds,
+	}
+	err := svc.WaitUntilInstanceStatusOk(input)
+	return err
+}
+
+func WaitForInstances2Run(instanceIds []*string, svc *ec2.EC2) error {
+	log.Printf("Waiting for instances %s to run...", utils.Slice2String(instanceIds))
+	input := &ec2.DescribeInstancesInput{
+		InstanceIds: instanceIds,
+	}
+	err := svc.WaitUntilInstanceRunning(input)
+	return err
+}
+
+func GetPublicIps(instanceIds []*string, svc *ec2.EC2) ([]*string, error) {
+	ipAddresses := make([]*string, 0)
+	err := WaitForOkInstances(instanceIds, svc)
+	input := &ec2.DescribeInstancesInput{
+		InstanceIds: instanceIds,
+	}
+
+	result, err := svc.DescribeInstances(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				log.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			log.Println(err.Error())
+		}
+		return ipAddresses, err
+	}
+
+	fmt.Println(result)
+	for _, reserv := range result.Reservations {
+		for _, instance := range reserv.Instances {
+			ipAddresses = append(ipAddresses, instance.PublicIpAddress)
+		}
+	}
+	return ipAddresses, nil
 }

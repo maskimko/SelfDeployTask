@@ -14,6 +14,11 @@ func GetPath2Itself() (string, error) {
 	return dir, nil
 }
 
+func BaseName(absPath string) string {
+	base := filepath.Base(absPath)
+	return base
+}
+
 func GetRemotePath(username, localAbsPath string) string {
 	base := filepath.Base(localAbsPath)
 

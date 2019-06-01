@@ -1,54 +1,62 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"wix/aws"
 	"wix/server"
 	"wix/utils"
+
+	"github.com/fatih/color"
 )
 
 const VpcName string = "Go4learn"
 
 func main() {
+	color.White("Welcome to the wix task of Maksym Shkolnyi")
 	me, err := utils.GetPath2Itself()
 	if err != nil {
 		log.Fatalf("Cannot get path to itself: %s\n", err)
 	}
-	fmt.Printf("This executable is located at: %s\n", me)
+	color.Yellow("This executable is located at: %s\n", me)
 	myIp, err := utils.GetMyIp()
 	if err != nil {
 		log.Fatalf("Cannot get my IP address: %s\n", err)
 	}
 
-	// sshConfig := &ssh.SshConfig{Host: "ansible.tonicfordev.com",
-	// 	Port:    22,
-	// 	KeyPath: "/Users/maksym.shkolnyi/.ssh/tonic",
-	// 	User:    "maksym.shkolnyi"}
-	//
-	fmt.Printf("My external IP address is: %s\n", *myIp)
+	color.White("My external IP address is: %s\n", *myIp)
 	// ssh.CopyItself(sshConfig)
 	// fmt.Println("I moved myself to the remote machine")
 	// ssh.RunCommand("uptime", sshConfig)
 	// fmt.Println("I launched myself to the remote machine")
 
-	fmt.Println("Checking where I am. Please wait...")
+	color.Blue("Checking where I am. Please wait...")
 	inAWS := utils.AmIinAnAWS()
 	if inAWS {
-		fmt.Println("I exist in AWS")
+		color.Yellow("I exist in AWS")
 	} else {
-		fmt.Println("I defenitely exist not in AWS. Perhaps on your laptop;)")
+		color.Blue("I defenitely exist not in AWS. Perhaps on your laptop;)")
 	}
-	//sshConfig := &ssh.SshConfig{}
-
 	awsSession := aws.GetDefaultSession()
 	awsInventory := &aws.Inventory{Session: awsSession}
 	err = aws.Init(awsInventory)
 	if err != nil {
 		log.Fatalf("Cannot perform AWS initialization: %s", err)
 	}
+
+	//Deploy itself
+	// err = ssh.Deploy(awsInventory.PublicIps, awsInventory.GetPrivateKey())
+	// if err != nil {
+	// 	log.Fatalf("Cannot deploy myself to servers: %s", err)
+	// }
+	// color.Green("Application has been successfully deployed to the servers\n\tAvailable endpoints:")
+	// for _, ip := range awsInventory.PublicIps {
+	// 	color.Cyan("\t%s", *ip)
+	// }
+
+	//String server
 	err = server.Start(1989, awsInventory)
 	if err != nil {
 		log.Fatalf("Cannot start server: %s", err)
 	}
+
 }
