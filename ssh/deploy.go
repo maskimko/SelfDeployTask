@@ -73,7 +73,9 @@ func DeployHost(sc *SshConfig) error {
 		log.Printf("Cannot reload systemd: %s", err)
 		return err
 	}
-	err = RunCommand("sudo systemctl start ", sc)
+	//Start of the service is disabled by now. It is just enabled.
+	// It means that it would be autostarted while booting
+	err = RunCommand("sudo systemctl enable ", sc)
 	if err != nil {
 		log.Printf("Cannot install unit file: %s", err)
 		return err

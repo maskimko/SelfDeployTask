@@ -23,6 +23,12 @@ Additional information:
  - Application listen to the TCP socket on port 1989
  - Stop command can be sent like this: _echo   "stop" | nc -4 localhost 1989_
  - Move command can be sent like this: _echo  -n "moveto 'eu-west-1'" | nc -4 localhost 1989_
+What should be done else:
+-------------------------
+ - Add InstanceProfile with attached policies and roles
+   to the launched instances to allow deployed binary to act
+ - Fix region guessing inside the EC2 instance (Use get http call to the magic endpoint)
+
 
 Improvement ways
 ----------------
@@ -39,7 +45,9 @@ Improvement ways
  - Sign package by GPG
 
 
-
-*Note 1:* It is better to launch this code on GNU/Linux
-
-*Note 2:* If you use Mac OS, AWS EC2 instances will not be able to execute the deployed binary, because they are Linux not Mac OS
+ * Note 0: Timings:
+    - Spinning up an VPC takes about 5 minutes (Mainly because of waiting for EC2 instances to bootstrap)
+    - Shut down the region takes about 2 minutes
+ * Note 1: It is better to launch this code on GNU/Linux
+ * Note 2: If you use Mac OS, AWS EC2 instances will not be able to execute the deployed binary, because they are Linux not Mac OS
+ * Note 3: I temporary disable start of deployed binary

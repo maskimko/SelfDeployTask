@@ -36,7 +36,9 @@ func main() {
 		color.HiBlue("I defenitely exist not in AWS. Perhaps on your laptop;)")
 	}
 	awsSession := aws.GetDefaultSession()
-	awsInventory := &aws.Inventory{Session: awsSession}
+	awsInventory := &aws.Inventory{Session: awsSession,
+		InAWS: inAWS,
+	}
 	err = aws.Init(awsInventory)
 	if err != nil {
 		log.Fatalf("Cannot perform AWS initialization: %s", err)
