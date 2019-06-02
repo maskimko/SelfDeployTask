@@ -19,12 +19,18 @@ Command to launch: _go run main.go_
 
 Or you can download a precompiled binary and launch it
 
+Additional information:
+ - Application listen to the TCP socket on port 1989
+ - Stop command can be sent like this: _echo   "stop" | nc -4 localhost 1989_
+ - Move command can be sent like this: _echo  -n "moveto 'eu-west-1'" | nc -4 localhost 1989_
+
 Improvement ways
 ----------------
  - Make server calls not blocking
  - Use channels for error handling
  - Remove Debug output
  - Organize code better
+ - Do not hardcode listen port and some AWS tag names
  - Add configuration by:
     - Environment variables
     - Command line arguments ("flag")
