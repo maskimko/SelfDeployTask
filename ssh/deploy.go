@@ -58,19 +58,19 @@ func DeployHost(sc *SshConfig) error {
 		return err
 	}
 	unitFileContents := fmt.Sprintf(unitTemplate, Executable, Executable, Executable)
-	err = RunCommand(fmt.Sprintf("cat '%s' > /tmp/%s.unitfile", unitFileContents, Executable), sc)
+	err = RunCommand(fmt.Sprintf("echo '%s' > /tmp/%s.unitfile", unitFileContents, Executable), sc)
 	if err != nil {
 		log.Printf("Cannot create temp unit file: %s", err)
 		return err
 	}
-	err = RunCommand(fmt.Sprintf("sudo install -m 0644 /tmp/%s.unitfile /use/lib/systemd/system/%s", Executable, Executable), sc)
+	err = RunCommand(fmt.Sprintf("sudo install -m 0644 /tmp/%s.unitfile /usr/lib/systemd/system/%s.service", Executable, Executable), sc)
 	if err != nil {
 		log.Printf("Cannot install unit file: %s", err)
 		return err
 	}
 	err = RunCommand("sudo systemctl daemon-reload", sc)
 	if err != nil {
-		log.Printf("Cannnot reload systemd: %s", err)
+		log.Printf("Cannot reload systemd: %s", err)
 		return err
 	}
 	err = RunCommand("sudo systemctl start ", sc)

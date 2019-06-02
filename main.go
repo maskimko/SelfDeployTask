@@ -4,6 +4,7 @@ import (
 	"log"
 	"wix/aws"
 	"wix/server"
+	"wix/ssh"
 	"wix/utils"
 
 	"github.com/fatih/color"
@@ -42,14 +43,15 @@ func main() {
 	}
 
 	//Deploy itself
-	// err = ssh.Deploy(awsInventory.PublicIps, awsInventory.GetPrivateKey())
-	// if err != nil {
-	// 	log.Fatalf("Cannot deploy myself to servers: %s", err)
-	// }
-	// color.Green("Application has been successfully deployed to the servers\n\tAvailable endpoints:")
-	// for _, ip := range awsInventory.PublicIps {
-	// 	color.Cyan("\t%s", *ip)
-	// }
+	err = ssh.Deploy(awsInventory.PublicIps, awsInventory.GetPrivateKey())
+	if err != nil {
+		// log.Fatalf("Cannot deploy myself to servers: %s", err)
+		log.Printf("Cannot deploy myself to servers: %s", err)
+	}
+	color.Green("Application has been successfully deployed to the servers\n\tAvailable endpoints:")
+	for _, ip := range awsInventory.PublicIps {
+		color.Cyan("\t%s:1989", *ip)
+	}
 
 	//String server
 	err = server.Start(1989, awsInventory)
