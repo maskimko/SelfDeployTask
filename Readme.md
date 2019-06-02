@@ -25,6 +25,11 @@ What should be done else:
    to the launched instances to allow deployed binary to act
  - Fix region guessing inside the EC2 instance (Use get http call to the magic endpoint)
 
+Additional information:
+-----------------------
+ - Application listen to the TCP socket on port 1989
+ - Stop command can be sent like this: _echo   "stop" | nc -4 localhost 1989_
+ - Move command can be sent like this: _echo  -n "moveto 'eu-west-1'" | nc -4 localhost 1989_
 
 Improvement ways
 ----------------
@@ -32,6 +37,7 @@ Improvement ways
  - Use channels for error handling
  - Remove Debug output
  - Organize code better
+ - Do not hardcode listen port and some AWS tag names
  - Add configuration by:
     - Environment variables
     - Command line arguments ("flag")
