@@ -6,8 +6,10 @@ import (
 	"wix/utils"
 )
 
-const Executable string = "wix-task"
-const unitTemplate string = `
+const (
+	DefaultSshUser string = "centos"
+	Executable     string = "wix-task"
+	unitTemplate   string = `
 [Unit]
 Description=Test task daemon (author Maksym Shkolnyi)
 
@@ -21,6 +23,7 @@ ExecStart=/usr/local/bin/%s --pid-file=/var/run/%s
 [Install]
 WantedBy=multi-user.target
 `
+)
 
 func Deploy(ips []*string, privateKey *[]byte) error {
 	for _, ip := range ips {
@@ -28,7 +31,7 @@ func Deploy(ips []*string, privateKey *[]byte) error {
 			Host:       *ip,
 			Port:       22,
 			PrivateKey: *privateKey,
-			User:       "ec2-user"}
+			User:       "centos"}
 		err := DeployHost(sshConfig)
 		if err != nil {
 			log.Printf("Cannot deploy host %s", *ip)

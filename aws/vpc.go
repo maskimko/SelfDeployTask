@@ -126,6 +126,77 @@ func AttachIgw(igwId, vpcId *string, svc *ec2.EC2) error {
 	return nil
 }
 
+func RouteInternetTraffic(igwId, vpcId *string, svc *ec2.EC2) error {
+
+	describeInput := &ec2.DescribeRouteTablesInput{
+		Filters: []*ec2.Filter{
+			{
+				Name: aws.String("vpc-id"),
+				Values: []*string{
+					vpcId,
+				},
+			},
+		},
+	}
+
+	result, err := svc.DescribeRouteTables(describeInput)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				log.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			log.Println(err.Error())
+		}
+		return err
+	}
+
+	fmt.Println(result)
+	if len(result.RouteTables) == 0 {
+		return errors.New("No route tables found")
+	}
+	if len(result.RouteTables) > 1 {
+		log.Printf("Weird, there are more than 1 route table.\n\tI am oigng to pick first one from list and use it as a default one")
+	}
+	//Assuming that we have single default route table
+	rtbId := result.RouteTables[0].RouteTableId
+	err = NameResource(aws.String(ResourceName), rtbId, svc)
+	if err != nil {
+		log.Printf("Cannot name resource %s", *rtbId)
+	}
+	err = LabelResource(rtbId, svc)
+	if err != nil {
+		log.Printf("Cannot label resource %s", *rtbId)
+	}
+
+	routeInput := &ec2.CreateRouteInput{
+		DestinationCidrBlock: aws.String("0.0.0.0/0"),
+		GatewayId:            igwId,
+		RouteTableId:         rtbId,
+	}
+
+	routeResult, err := svc.CreateRoute(routeInput)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				log.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			log.Println(err.Error())
+		}
+		return err
+	}
+
+	fmt.Println(routeResult)
+	return nil
+}
+
 func DetachInternetGateway(igwId, vpcId *string, timeoutSeconds int16, svc *ec2.EC2) error {
 
 	describeInput := &ec2.DescribeInternetGatewaysInput{

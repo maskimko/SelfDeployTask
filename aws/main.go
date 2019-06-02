@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -14,9 +15,8 @@ import (
 	"github.com/fatih/color"
 )
 
-//CentOS 7 (x86_64) - with Updates HVM
 const (
-	// DefaultAMI          string = "ami-02eac2c0129f6376b"
+	ResourceName        string = "GoTask"
 	DefaultInstanceType string = "t2.nano"
 )
 
@@ -96,28 +96,47 @@ func Init(inventory *Inventory) error {
 	conf := sess.Config
 	region := conf.Region
 	inventory.Region = region
+
+	//Initiate services
 	iamService := iam.New(sess)
 	ec2Service := ec2.New(sess)
 	elbService := elb.New(sess)
+
+	//Get User info
 	userOut, err := iamService.GetUser(&iam.GetUserInput{})
 	if err != nil {
-		log.Printf("Cannot get current user info: %s\n", err)
-		return err
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case "ExpiredToken":
+				color.Red("Authentication failed!")
+				log.Printf("Please renew your token: %s\n", err)
+			default:
+				log.Println(aerr.Error())
+			}
+		} else {
+			log.Printf("Cannot get current user info: %s\n", err)
+			return err
+		}
 	}
 	userArn, err := arn.Parse(*(userOut.User.Arn))
 	if err != nil {
 		log.Printf("Cannot get current user ARN: %s\n", err)
 		return err
 	}
+
+	//Get Account Id
 	accountId := userArn.AccountID
 	color.Green("Using AWS account id: '%s'", accountId)
 
+	//get availability zones
 	azs, err := GetAzIds(ec2Service)
 	if err != nil {
 		return err
 	}
 	color.Green("Using region '%s'. This region has these availability zones: %s", *region, utils.Slice2String(azs))
-	vpcId, err := CreateVpc("Test-Vpc", ec2Service)
+
+	//Create VPC
+	vpcId, err := CreateVpc(ResourceName, ec2Service)
 	if err != nil {
 		return err
 	}
@@ -127,6 +146,8 @@ func Init(inventory *Inventory) error {
 	if err != nil {
 		return err
 	}
+
+	//Create IGW
 	inventory.IgwId = igwId
 	color.Green("Internet Gateway '%s' has been successfully created", *igwId)
 	AttachIgw(igwId, vpcId, ec2Service)
@@ -134,30 +155,54 @@ func Init(inventory *Inventory) error {
 		return err
 	}
 	color.Green("Internet Gateway '%s' has been successfully attached to the VPC '%s'", *igwId, *vpcId)
+
+	//Create Key Pair
 	privKey, err := CreateKeyPair(ec2Service)
 	inventory.PrivateKey = privKey
 	if err != nil {
-		return err
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case "InvalidKeyPair.Duplicate":
+				color.Yellow("Key pair already exists. So I cannot display a Private key.")
+				err = nil
+			default:
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		color.HiBlue("For debugging purpose you may want to save this private key:\n%s\n", *privKey)
+		color.Green("SSH key pair '%s' has been successfully created", KeyPairName)
 	}
-  color.HiBlue("For debugging purpose you may want to save this private key:\n%s\n", *privKey)
-	color.Green("SSH key pair '%s' has been successfully created", KeyPairName)
+	//Create subnets
 	subnets, err := CreateSubnets(vpcId, ec2Service)
 	if err != nil {
 		return err
 	}
 	inventory.Subnets = subnets
 	color.Green("Created subnets %s", utils.Slice2String(subnets))
+
+	//Create SGs
 	ipAddr, err := utils.GetMyIp()
 	if err != nil {
 		return err
 	}
-
 	securityGroupIds, err := CreateSecurityGroups(ipAddr, vpcId, ec2Service)
 	if err != nil {
 		return err
 	}
 	inventory.SecurityGroups = securityGroupIds
 	color.Green("Created security groups %s", utils.Slice2String(securityGroupIds))
+
+	//Add public routes
+	err = RouteInternetTraffic(igwId, vpcId, ec2Service)
+	if err != nil {
+		return err
+	}
+	color.Green("Route to the world has been added")
+
+	//Launch instances
 	instanceIds, err := RunInstances(aws.String(KeyPairName), subnets, securityGroupIds[0], ec2Service)
 	if err != nil {
 		return err
@@ -177,22 +222,25 @@ func Init(inventory *Inventory) error {
 	color.Green("Created instances '%s' with public IP addresses (%s)",
 		utils.Slice2String(instanceIds),
 		utils.Slice2String(publicIps))
+
+	//Create Load Balancer
 	dns, err := CreateElb(subnets, securityGroupIds[1], elbService)
 	if err != nil {
 		return err
 	}
 	color.Green("Created ELB. It is available by tcp://%s:1989", *dns)
-
+	//Report success
 	color.Cyan("Region %s has been successfully initialized!", *region)
 	return nil
 }
 
-func Destroy(inventory *Inventory) error {
+func Destroy(deleteKeyPair bool, inventory *Inventory) error {
 	color.Red("Destroying region %s...", *(inventory.Region))
 	sess := inventory.Session
 	ec2Service := ec2.New(sess)
 	elbService := elb.New(sess)
 
+	//Terminate instances
 	err := UnbindPublicIps(inventory.AllocationIds, inventory.AssociationIds, ec2Service)
 	if err != nil {
 		return err
@@ -200,52 +248,63 @@ func Destroy(inventory *Inventory) error {
 	color.Red("Elastic IP addresses %s\n\t(allocation ids %s,\n\tassociation ids %s)\n\thas been successfully released",
 		utils.Slice2String(inventory.PublicIps),
 		utils.Slice2String(inventory.AllocationIds),
-    utils.Slice2String(inventory.AssociationIds))
+		utils.Slice2String(inventory.AssociationIds))
 	color.Red("Terminating instances %s. Please wait...", utils.Slice2String(inventory.Instances))
-
 	err = TerminateInstances(inventory.Instances, ec2Service)
 	if err != nil {
 		return err
 	}
 	color.Red("Instances %s have been successfully terminated", utils.Slice2String(inventory.Instances))
+
+	//Delete ELB
 	err = DeleteElb(elbService)
 	if err != nil {
 		return err
 	}
-
 	color.Red("ELB %s have been successfully removed", ElbName)
+
+	//Delete SGs
 	err = DeleteSecurityGroups(inventory.SecurityGroups, ec2Service)
 	if err != nil {
 		return err
 	}
 	color.Red("Security groups %s have been successfully removed", utils.Slice2String(inventory.SecurityGroups))
+
+	//Delete subnets`
 	err = DeleteSubnets(inventory.Subnets, ec2Service)
 	if err != nil {
 		return err
 	}
 	color.Red("Subnets %s have been successfully removed", utils.Slice2String(inventory.Subnets))
 
+	//Delete IGW
 	err = DetachInternetGateway(inventory.IgwId, inventory.VpcId, 120, ec2Service)
 	if err != nil {
 		return err
 	}
-
 	color.Red("Internet gateway %s have been successfully detached from VPC %s", *(inventory.IgwId), *(inventory.VpcId))
 	DeleteInternetGateway(inventory.IgwId, ec2Service)
 	if err != nil {
 		return err
 	}
 	color.Red("IGW %s have been successfully removed", *(inventory.IgwId))
+
+	//Delete VPC
 	err = DeleteVpc(inventory.VpcId, ec2Service)
 	if err != nil {
 		return err
 	}
 	color.Red("VPC %s have been successfully removed", inventory.VpcId)
-	err = DeleteKeyPair(ec2Service)
-	if err != nil {
-		return err
+
+	//Remove Key Pair if needed
+	if deleteKeyPair {
+		err = DeleteKeyPair(ec2Service)
+		if err != nil {
+			return err
+		}
 	}
 	color.Red("Key pair %s have been successfully removed", KeyPairName)
+	//Report success
 	color.Magenta("Region %s is clean", *(inventory.Region))
 	return nil
 }

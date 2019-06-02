@@ -9,8 +9,6 @@ import (
 	"github.com/fatih/color"
 )
 
-const VpcName string = "Go4learn"
-
 func main() {
 	color.White("Welcome to the wix task of Maksym Shkolnyi")
 	me, err := utils.GetPath2Itself()
@@ -29,12 +27,12 @@ func main() {
 	// ssh.RunCommand("uptime", sshConfig)
 	// fmt.Println("I launched myself to the remote machine")
 
-	color.Blue("Checking where I am. Please wait...")
+	color.HiBlue("Checking where I am. Please wait...")
 	inAWS := utils.AmIinAnAWS()
 	if inAWS {
 		color.Yellow("I exist in AWS")
 	} else {
-		color.Blue("I defenitely exist not in AWS. Perhaps on your laptop;)")
+		color.HiBlue("I defenitely exist not in AWS. Perhaps on your laptop;)")
 	}
 	awsSession := aws.GetDefaultSession()
 	awsInventory := &aws.Inventory{Session: awsSession}

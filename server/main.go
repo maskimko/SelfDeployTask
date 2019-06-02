@@ -86,7 +86,12 @@ func dispatch(message *string, inventory *aws.Inventory) error {
 }
 
 func handleStop(inventory *aws.Inventory) error {
-	err := aws.Destroy(inventory)
+	err := aws.Destroy(true, inventory)
+	return err
+}
+
+func handleStopAfterMove(inventory *aws.Inventory) error {
+	err := aws.Destroy(false, inventory)
 	return err
 }
 
@@ -100,7 +105,7 @@ func handleMove(region string, inventory *aws.Inventory) error {
 		return err
 	}
 	log.Printf("Shutting down deployment in initial region %s", *(oldInventory.Region))
-	err = handleStop(oldInventory)
+	err = handleStopAfterMove(oldInventory)
 	if err != nil {
 		return err
 	}
