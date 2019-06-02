@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"fmt"
 	"log"
 	"wix/utils"
 
@@ -50,6 +51,7 @@ type Inventory struct {
 	IgwId          *string
 	SecurityGroups []*string
 	Subnets        []*string
+	InAWS          bool
 }
 
 func (i *Inventory) Clone() *Inventory {
@@ -65,6 +67,7 @@ func (i *Inventory) Clone() *Inventory {
 		IgwId:          i.IgwId,
 		SecurityGroups: i.SecurityGroups,
 		Subnets:        i.Subnets,
+		InAWS:          i.InAWS,
 	}
 	return &inv
 }
@@ -109,7 +112,12 @@ func Init(inventory *Inventory) error {
 			switch aerr.Code() {
 			case "ExpiredToken":
 				color.Red("Authentication failed!")
-				log.Printf("Please renew your token: %s\n", err)
+				log.Fatalf("Please renew your token: %s\n", err)
+			case "UnauthorizedOperation":
+				color.Red("Authentication failed!")
+				log.Fatalf("It looks like you have to use your MFA token to get dynamic credentials: %s\n", err)
+			case "NoCredentialProviders":
+				log.Println("It looks like I was executed inside the AWS EC2 instance")
 			default:
 				log.Println(aerr.Error())
 			}
@@ -118,15 +126,18 @@ func Init(inventory *Inventory) error {
 			return err
 		}
 	}
-	userArn, err := arn.Parse(*(userOut.User.Arn))
-	if err != nil {
-		log.Printf("Cannot get current user ARN: %s\n", err)
-		return err
-	}
+	fmt.Println(userOut)
+	if !inventory.InAWS {
+		userArn, err := arn.Parse(*(userOut.User.Arn))
+		if err != nil {
+			log.Printf("Cannot get current user ARN: %s\n", err)
+			return err
+		}
 
-	//Get Account Id
-	accountId := userArn.AccountID
-	color.Green("Using AWS account id: '%s'", accountId)
+		//Get Account Id
+		accountId := userArn.AccountID
+		color.Green("Using AWS account id: '%s'", accountId)
+	}
 
 	//get availability zones
 	azs, err := GetAzIds(ec2Service)
