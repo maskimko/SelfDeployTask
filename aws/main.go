@@ -73,6 +73,9 @@ func (i *Inventory) Clone() *Inventory {
 }
 
 func (i *Inventory) GetPrivateKey() *[]byte {
+	if i.PrivateKey == nil {
+		return nil
+	}
 	pKey := []byte(*i.PrivateKey)
 	return &pKey
 }
