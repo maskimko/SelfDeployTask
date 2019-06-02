@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"wix/aws"
+	"wix/ssh"
 )
 
 func Start(port int16, inventory *aws.Inventory) error {
@@ -103,6 +104,10 @@ func handleMove(region string, inventory *aws.Inventory) error {
 	err := aws.Init(inventory)
 	if err != nil {
 		return err
+	}
+	err = ssh.Deploy(inventory.PublicIps, inventory.GetPrivateKey())
+	if err != nil {
+		log.Printf("Cannot deploy myself to servers: %s", err)
 	}
 	log.Printf("Shutting down deployment in initial region %s", *(oldInventory.Region))
 	err = handleStopAfterMove(oldInventory)
