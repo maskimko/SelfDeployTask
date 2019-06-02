@@ -20,9 +20,11 @@ Command to launch: _go run main.go_
 Or you can download a precompiled binary and launch it
 
 Additional information:
+-----------------------
  - Application listen to the TCP socket on port 1989
  - Stop command can be sent like this: _echo   "stop" | nc -4 localhost 1989_
  - Move command can be sent like this: _echo  -n "moveto 'eu-west-1'" | nc -4 localhost 1989_
+
 What should be done else:
 -------------------------
  - Add InstanceProfile with attached policies and roles
