@@ -1,13 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"regexp"
-	"strings"
 	"wix/aws"
 	"wix/ssh"
 )
@@ -31,43 +31,34 @@ func handleConnection(conn net.Conn, inventory *aws.Inventory) error {
 	defer conn.Close()
 	rAddr := conn.RemoteAddr()
 	fmt.Printf("get Connection from %s\n", rAddr)
-	messageBuf := make([]byte, 0)
-	tmp := make([]byte, 256)
-	for {
-		n, err := conn.Read(tmp)
-		if err != nil {
-			if err != io.EOF {
-				log.Printf("Cannot read message: %s\n", err)
-				return err
-			}
-			break
-		}
-		messageBuf = append(messageBuf, tmp[:n]...)
+	b, err := ioutil.ReadAll(conn)
+	if err != nil {
+		log.Printf("Cannot read message: %s\n", err)
+		return err
 	}
-	message := string(messageBuf[:len(messageBuf)])
-	log.Printf("Received message %s (length %d)\n", message, len(message))
-	err := dispatch(&message, inventory)
+	log.Printf("Received message %s (length %d)\n", b, len(b))
+	err = dispatch(&b, inventory)
 	if err != nil {
 		log.Printf("Got error while handling message: %s\n", err)
 	}
 	return err
 }
 
-func dispatch(message *string, inventory *aws.Inventory) error {
-	stopRegex, _ := regexp.Compile("^stop$")
-	moveRegex, _ := regexp.Compile("^moveto '([a-z0-9-]+)'$")
-	rows := strings.Split(*message, "\n")
+func dispatch(message *[]byte, inventory *aws.Inventory) error {
+	stopRegex := regexp.MustCompile("^stop$")
+	moveRegex := regexp.MustCompile("^moveto '([a-z0-9-]+)'$")
+	rows := bytes.Split(*message, []byte("\n"))
 	for rn, row := range rows {
 		if len(row) > 0 {
-			if stopRegex.MatchString(row) {
+			if stopRegex.Match(row) {
 				err := handleStop(inventory)
 				if err != nil {
 					return err
 				}
 				continue
 			}
-			if moveRegex.MatchString(row) {
-				matches := moveRegex.FindStringSubmatch(row)
+			if moveRegex.Match(row) {
+				matches := moveRegex.FindSubmatch(row)
 				if len(matches) > 1 {
 					err := handleMove(matches[1], inventory)
 					if err != nil {
@@ -96,7 +87,10 @@ func handleStopAfterMove(inventory *aws.Inventory) error {
 	return err
 }
 
-func handleMove(region string, inventory *aws.Inventory) error {
+func handleMove(r []byte, inventory *aws.Inventory) error {
+	//Cannot avoid type conversion here, as it requires to change public interface
+	// and do the type conversion inside the GetSession function
+	region := string(r)
 	log.Printf("Received move to region %s signal. Start initializing a new region %s\n", region, region)
 	oldInventory := inventory.Clone()
 	awsSession := aws.GetSession(&region)

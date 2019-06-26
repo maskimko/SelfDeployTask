@@ -1,15 +1,15 @@
 package utils
 
 import (
+	"bytes"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 )
 
 const AwsIpCheckerUrl string = "https://checkip.amazonaws.com/"
 
-func GetMyIp() (*string, error) {
+func GetMyIp() (*[]byte, error) {
 	resp, err := http.Get(AwsIpCheckerUrl)
 	if err != nil {
 		log.Printf("Cannot reach out to %s\n", AwsIpCheckerUrl)
@@ -21,6 +21,6 @@ func GetMyIp() (*string, error) {
 		log.Printf("Cannot read response from %s\n", AwsIpCheckerUrl)
 		return nil, err
 	}
-	ip := strings.Trim(string(body), " \n")
+	ip := bytes.Trim(body, " \n")
 	return &ip, nil
 }

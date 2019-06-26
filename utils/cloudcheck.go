@@ -26,7 +26,5 @@ func AmIinAnAWS() bool {
 		log.Printf("Cannot read response from %s", MagicIp)
 		return false
 	}
-	instanceId := string(body)
-	instanceRegex, _ := regexp.Compile("^i-[0-9a-f]{8,}$")
-	return instanceRegex.MatchString(instanceId)
+	return regexp.MustCompile("^i-[0-9a-f]{8,}$").Match(body)
 }
