@@ -164,7 +164,7 @@ func Init(inventory *Inventory) error {
 	//Create IGW
 	inventory.IgwId = igwId
 	color.Green("Internet Gateway '%s' has been successfully created", *igwId)
-	AttachIgw(igwId, vpcId, ec2Service)
+	err = AttachIgw(igwId, vpcId, ec2Service)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,6 @@ func Init(inventory *Inventory) error {
 			switch aerr.Code() {
 			case "InvalidKeyPair.Duplicate":
 				color.Yellow("Key pair already exists. So I cannot display a Private key.")
-				err = nil
 			default:
 				return err
 			}
@@ -198,11 +197,12 @@ func Init(inventory *Inventory) error {
 	color.Green("Created subnets %s", utils.Slice2String(subnets))
 
 	//Create SGs
-	ipAddr, err := utils.GetMyIp()
+	ip, err := utils.GetMyIp()
 	if err != nil {
 		return err
 	}
-	securityGroupIds, err := CreateSecurityGroups(ipAddr, vpcId, ec2Service)
+	ipAddr := string(*ip)
+	securityGroupIds, err := CreateSecurityGroups(&ipAddr, vpcId, ec2Service)
 	if err != nil {
 		return err
 	}
@@ -297,7 +297,7 @@ func Destroy(deleteKeyPair bool, inventory *Inventory) error {
 		return err
 	}
 	color.Red("Internet gateway %s have been successfully detached from VPC %s", *(inventory.IgwId), *(inventory.VpcId))
-	DeleteInternetGateway(inventory.IgwId, ec2Service)
+	err = DeleteInternetGateway(inventory.IgwId, ec2Service)
 	if err != nil {
 		return err
 	}
